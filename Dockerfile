@@ -64,9 +64,12 @@ fi
 echo "Starting gateway service on port 7780..."
 cd /opt/server/gateway && bun run gateway.ts &
 
-# Start game server
+# Start game server with verification disabled
 echo "Starting game server..."
 cd /opt/server/engine
+export BUILD_VERIFY_PACK=false
+export BUILD_VERIFY=false
+export BUILD_VERIFY_FOLDER=false
 exec bun run src/app.ts
 EOF
 
