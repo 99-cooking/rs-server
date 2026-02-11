@@ -3,6 +3,7 @@ import Environment from '#/util/Environment.js';
 import World from '#/engine/World.js';
 import { handleClientPage, handleCacheEndpoints } from './pages/client.js';
 import { handleHiscoresPage, handleHiscoresPlayerPage, handleHiscoresOutfitPage } from './pages/hiscores.js';
+import { handleHomePage, handleRegisterPage } from './pages/register.js';
 import { handleViewerAssets } from './hiscoresServer.js';
 import { handleScreenshotsListPage, handleScreenshotFilePage } from './pages/screenshots.js';
 import { handleScreenshotUpload, handleExportCollisionApi } from './pages/api.js';
@@ -128,7 +129,15 @@ export async function startWeb() {
                 }
             }
 
-            // Client pages (/, /bot, /rs2.cgi)
+            // Home page (/)
+            const homeResponse = await handleHomePage(url);
+            if (homeResponse) return homeResponse;
+
+            // Registration page (/register)
+            const registerResponse = await handleRegisterPage(req, url);
+            if (registerResponse) return registerResponse;
+
+            // Client pages (/bot, /rs2.cgi, /vanilla)
             const clientResponse = await handleClientPage(url);
             if (clientResponse) return clientResponse;
 

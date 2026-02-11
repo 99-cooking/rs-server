@@ -7,8 +7,8 @@ import { tryParseInt } from '#/util/TryParse.js';
 import Environment from '#/util/Environment.js';
 
 export async function handleClientPage(url: URL): Promise<Response | null> {
-    // Bot client at / and /bot
-    if (url.pathname === '/' || url.pathname === '/bot' || url.pathname === '/bot/') {
+    // Bot client at /bot (for SDK automation)
+    if (url.pathname === '/bot' || url.pathname === '/bot/') {
         const lowmem = tryParseInt(url.searchParams.get('lowmem'), 0);
         const botUsername = url.searchParams.get('bot') || 'default';
 
