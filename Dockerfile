@@ -1,31 +1,9 @@
-# syntax=docker/dockerfile:1
 FROM oven/bun:debian
 
-# Install system deps with cache mount
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt update && apt install -y --no-install-recommends \
-    default-jdk git ca-certificates bash sqlite3
-
-WORKDIR /opt/server
-
-# === DEPENDENCY LAYER (cached unless package files change) ===
-
-# Copy only package files first
-COPY engine/package.json engine/bun.lock /opt/server/engine/
-COPY gateway/package.json gateway/bun.lock /opt/server/gateway/
-
-# Install engine deps with bun cache mount
-WORKDIR /opt/server/engine
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install
-
-# Install gateway deps with bun cache mount
-WORKDIR /opt/server/gateway
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install
-
-# === SOURCE LAYER (rebuilds on code changes, but deps cached) ===
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-jdk git ca-certificates bash sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/server
 
@@ -36,15 +14,17 @@ COPY engine /opt/server/engine
 COPY gateway /opt/server/gateway
 COPY sdk /opt/sdk
 
-# Patch and build engine
+# Install engine deps and build
 WORKDIR /opt/server/engine
 RUN [ -f .env ] || cp .env.example .env && \
+    bun install && \
     sed -i 's/port: Environment.WEB_PORT,/port: Environment.WEB_PORT, hostname: "0.0.0.0",/' src/web/index.ts && \
     bun run build
 
-# Patch gateway
+# Install gateway deps and patch
 WORKDIR /opt/server/gateway
-RUN sed -i 's/port: GATEWAY_PORT,/port: GATEWAY_PORT, hostname: "0.0.0.0",/' gateway.ts
+RUN bun install && \
+    sed -i 's/port: GATEWAY_PORT,/port: GATEWAY_PORT, hostname: "0.0.0.0",/' gateway.ts
 
 WORKDIR /opt/server
 
@@ -52,32 +32,23 @@ EXPOSE 8080/tcp
 EXPOSE 43594/tcp
 EXPOSE 7780/tcp
 
-# Entrypoint script to ensure persistent data is on the volume
+# Entrypoint script
 COPY --chmod=755 <<'EOF' /opt/server/entrypoint.sh
 #!/bin/bash
 set -e
 
-# === DATABASE ===
+# Create data directory
+mkdir -p /opt/server/data/players
+
 # Symlink db.sqlite to persistent volume
 if [ ! -L /opt/server/engine/db.sqlite ]; then
     rm -f /opt/server/engine/db.sqlite
     ln -s /opt/server/data/db.sqlite /opt/server/engine/db.sqlite
 fi
 
-# Run migrations (idempotent - only applies pending migrations)
+# Run migrations
 echo "Running database migrations..."
-cd /opt/server/engine && bun run sqlite:migrate
-
-# === PLAYER SAVES ===
-# Create players directory on volume if it doesn't exist
-mkdir -p /opt/server/data/players
-
-# If there are existing player saves in ephemeral storage, move them to volume
-if [ -d /opt/server/engine/data/players ] && [ ! -L /opt/server/engine/data/players ]; then
-    # Copy any existing saves to volume (won't overwrite existing)
-    cp -rn /opt/server/engine/data/players/* /opt/server/data/players/ 2>/dev/null || true
-    rm -rf /opt/server/engine/data/players
-fi
+cd /opt/server/engine && bun run sqlite:migrate || true
 
 # Create symlink for player saves
 mkdir -p /opt/server/engine/data
@@ -86,11 +57,12 @@ if [ ! -L /opt/server/engine/data/players ]; then
     ln -s /opt/server/data/players /opt/server/engine/data/players
 fi
 
-# === START GATEWAY SERVICE ===
+# Start gateway service
 echo "Starting gateway service on port 7780..."
 cd /opt/server/gateway && bun run gateway.ts &
 
-# === START GAME SERVER ===
+# Start game server
+echo "Starting game server..."
 cd /opt/server/engine
 exec bun run src/app.ts
 EOF
