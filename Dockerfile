@@ -25,6 +25,13 @@ RUN cp .env.example .env && \
     sed -i 's/port: Environment.WEB_PORT,/port: Environment.WEB_PORT, hostname: "0.0.0.0",/' src/web/index.ts && \
     bun run build
 
+# Build webclient (standard + bot)
+WORKDIR /opt/server/webclient
+RUN bun install && bun run build && \
+    mkdir -p /opt/server/engine/public/client /opt/server/engine/public/bot && \
+    cp out/standard/client.js /opt/server/engine/public/client/client.js && \
+    cp out/bot/client.js /opt/server/engine/public/bot/client.js
+
 # Install gateway deps and patch
 WORKDIR /opt/server/gateway
 RUN bun install && \
