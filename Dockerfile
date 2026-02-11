@@ -14,7 +14,7 @@ COPY engine /opt/server/engine
 COPY gateway /opt/server/gateway
 COPY sdk /opt/sdk
 
-# Install engine deps (skip build - will pack at runtime)
+# Install engine deps and build
 WORKDIR /opt/server/engine
 RUN cp .env.example .env && \
     echo "BUILD_VERIFY_PACK=false" >> .env && \
@@ -22,7 +22,8 @@ RUN cp .env.example .env && \
     echo "BUILD_VERIFY_FOLDER=false" >> .env && \
     echo "EASY_STARTUP=true" >> .env && \
     bun install && \
-    sed -i 's/port: Environment.WEB_PORT,/port: Environment.WEB_PORT, hostname: "0.0.0.0",/' src/web/index.ts
+    sed -i 's/port: Environment.WEB_PORT,/port: Environment.WEB_PORT, hostname: "0.0.0.0",/' src/web/index.ts && \
+    bun run build
 
 # Install gateway deps and patch
 WORKDIR /opt/server/gateway
