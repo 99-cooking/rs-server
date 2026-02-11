@@ -17,6 +17,8 @@ COPY sdk /opt/sdk
 # Install engine deps and build
 WORKDIR /opt/server/engine
 RUN [ -f .env ] || cp .env.example .env && \
+    echo "BUILD_VERIFY_PACK=false" >> .env && \
+    echo "BUILD_STARTUP=false" >> .env && \
     bun install && \
     sed -i 's/port: Environment.WEB_PORT,/port: Environment.WEB_PORT, hostname: "0.0.0.0",/' src/web/index.ts && \
     bun run build
