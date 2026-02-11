@@ -64,6 +64,13 @@ fi
 echo "Starting gateway service on port 7780..."
 cd /opt/server/gateway && bun run gateway.ts &
 
+# Debug: verify files exist
+echo "Checking content files..."
+ls -la /opt/server/content/pack/animset.pack
+ls /opt/server/content/models/anim_150.anim
+echo "Pack file content (first 5 lines):"
+head -5 /opt/server/content/pack/animset.pack
+
 # Start game server with verification disabled
 echo "Starting game server..."
 cd /opt/server/engine
